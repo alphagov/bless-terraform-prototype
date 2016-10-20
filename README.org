@@ -1,0 +1,2 @@
+* Infrastructure for Bless
+Terraform and Puppet code to bootstrap a bastion (sometimes called a jump box) and application server configured to use [[https://github.com/Netflix/bless][Bless]] an SSH certificate authority.
