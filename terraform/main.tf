@@ -37,7 +37,8 @@ data "template_file" "bastion_user_data" {
 data "template_file" "app_server_user_data" {
   template = "${file("user-data/cloud-init-app-server.yaml")}"
   vars {
-    ca_keys = "${join("\n", var.ssh_ca_keys)}"
+    bless_user = "${var.bless_user}"
+    ca_keys    = "${join("\n", var.ssh_ca_keys)}"
   }
 }
 
