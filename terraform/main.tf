@@ -52,6 +52,7 @@ resource "aws_instance" "bastion" {
   user_data                   = "${data.template_file.bastion_user_data.rendered}"
 
   vpc_security_group_ids      = [
+    "${aws_security_group.ssh_within_vpc.id}",
     "${aws_security_group.ssh_from_internet.id}",
     "${aws_security_group.expected_internet_traffic.id}",
   ]
