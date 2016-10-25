@@ -1,0 +1,29 @@
+#cloud-config
+
+users:
+  - name: davidking
+    groups: users
+    ssh-authorized-keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC2a1hthz3fr/odHHUDPaRT0NpHNF6AK3LrnMm9x737eP3SQBejjqSMreUikYh36jTv4w5LiQ63npVlMp1zlQXAtc11st2tVEM+KiQQgWLlVUzNQCN/LPPlDOtR0oYDYUVQo/fZ5EBK6pi5f3jA9tMXghnSNvoUELSvuJmKYgRHRr4k1nl+8SKFs/ZdjEJDzZAnoZe8CEYT4J43HW0EKieUBf0KhbxUXfNNoe17FF5CH3z3/06Ebq6JaqinwUOb357SlV6k5+NARHgwITKYvajVKwrSggx/6WgcjEEKLwZWiHguPJakkr+oM7RKTn2kAeLEkegZGimYatsRxt592W+GzMpf5JXEfVnvfzQ39cSHHb4OLpCGDTXJadPgy7dNyRiHvwJD0qC6x4sTpAwWqQZxozAYXtKSg02v/b0Ai30AduHGhcaIV3/l/jkcluJ3LVtFp7xIyk4EvTnuJAC4+xRN42f+Zcv2iRc8/q4JRSiJ9XC/k4+3wrJ2bE7wLFWpsr91TAfvqg4kEOXA1KKIcASu+8Q5CFR3dGdSWNK/FYNReS1QMsrZp4tZvm50mL7H0NokQGkGTvBbLdZ7Lqj7tPe8uf4XoTxMbAmRUuhZOps0pgL6IIigDhUeXcnczIlg2lQRcIRxu9EQ44Qv+0QZp+5eZLJxgcklg4Z4JbHr7REb0w== david.king@digital.cabinet-office.gov.uk
+    sudo: ALL=(ALL) NOPASSWD:ALL
+  - name: engineer
+    groups: users
+    sudo: ALL=(ALL) NOPASSWD:ALL
+
+repo_update: true
+repo_upgrade: all
+
+packages:
+  - ntp
+
+
+write_files:
+  - path: /etc/ssh/cas.pub
+    permissions: '0400'
+    content: ${ca_keys}
+
+
+runcmd:
+  - [ deluser, ubuntu ]
+  - [ sh, -c, "echo TrustedUserCAKeys /etc/ssh/cas.pub >> /etc/ssh/sshd_config" ]
+  - [ service, sshd, restart ]

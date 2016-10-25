@@ -1,0 +1,68 @@
+#cloud-config
+
+users:
+  - name: davidking
+    groups: users
+    ssh-authorized-keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC2a1hthz3fr/odHHUDPaRT0NpHNF6AK3LrnMm9x737eP3SQBejjqSMreUikYh36jTv4w5LiQ63npVlMp1zlQXAtc11st2tVEM+KiQQgWLlVUzNQCN/LPPlDOtR0oYDYUVQo/fZ5EBK6pi5f3jA9tMXghnSNvoUELSvuJmKYgRHRr4k1nl+8SKFs/ZdjEJDzZAnoZe8CEYT4J43HW0EKieUBf0KhbxUXfNNoe17FF5CH3z3/06Ebq6JaqinwUOb357SlV6k5+NARHgwITKYvajVKwrSggx/6WgcjEEKLwZWiHguPJakkr+oM7RKTn2kAeLEkegZGimYatsRxt592W+GzMpf5JXEfVnvfzQ39cSHHb4OLpCGDTXJadPgy7dNyRiHvwJD0qC6x4sTpAwWqQZxozAYXtKSg02v/b0Ai30AduHGhcaIV3/l/jkcluJ3LVtFp7xIyk4EvTnuJAC4+xRN42f+Zcv2iRc8/q4JRSiJ9XC/k4+3wrJ2bE7wLFWpsr91TAfvqg4kEOXA1KKIcASu+8Q5CFR3dGdSWNK/FYNReS1QMsrZp4tZvm50mL7H0NokQGkGTvBbLdZ7Lqj7tPe8uf4XoTxMbAmRUuhZOps0pgL6IIigDhUeXcnczIlg2lQRcIRxu9EQ44Qv+0QZp+5eZLJxgcklg4Z4JbHr7REb0w== david.king@digital.cabinet-office.gov.uk
+    sudo: ALL=(ALL) NOPASSWD:ALL
+
+repo_update: true
+repo_upgrade: all
+
+packages:
+  - ntp
+  - unzip
+  - python-boto3
+
+runcmd:
+  - [ deluser, ubuntu ]
+  - [ /usr/local/bin/setup-bless.sh ]
+  - [ touch, /var/log/bless.log ]
+  - [ sh, -c, "echo 'session    optional    pam_exec.so log=/var/log/bless.log /usr/local/bin/issue_certificate' >> /etc/pam.d/sshd"]
+
+write_files:
+  - path: /usr/local/bin/setup-bless.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+
+      wget https://github.com/Netflix/bless/archive/master.zip -O /tmp/bless.zip
+      unzip /tmp/bless.zip -d /opt
+      ln -s /opt/bless-master/bless_client/bless_client.py /usr/local/bin/bless_client.py
+  - path: /usr/local/bin/issue_certificate
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      echo "Event: $PAM_TYPE"
+
+      if [[ "$PAM_TYPE" == "open_session" ]] 
+        then
+            USER_HOME="/home/$PAM_USER"
+            CERT_FILENAME="id_rsa-cert.pub"
+
+            # Remove existing certificate
+            if [[ -f "$USER_HOME/$CERT_FILENAME" ]]
+                then rm "$USER_HOME/$CERT_FILENAME";
+            fi
+            echo "Requesting a certificate for $PAM_USER ($PAM_RUSER on $PAM_RHOST) from bless."
+
+            # Request a certificate for the public key in .ssh/authorized_keys
+            # This relies upon only a single key being authorized
+            # TODO: Possibly in the future it could iterate through authorized_keys?
+            /usr/local/bin/bless_client.py ${region} ${bless_function} \
+                                                  "$PAM_USER" \
+                                                  "$PAM_RHOST" \
+                                                  ${bless_user} \
+                                                  $(curl http://169.254.169.254/2009-04-04/meta-data/local-ipv4) \
+                                                  "" \
+                                                  "$USER_HOME/.ssh/authorized_keys" \
+                                                  "$USER_HOME/$CERT_FILENAME"
+            if [ $? -eq 0 ]
+            then
+                chown $PAM_USER:$PAM_USER "$USER_HOME/$CERT_FILENAME"
+                echo 'Certificate successfully requested'
+            else
+                echo 'Failed to issue certificate from bless.'
+            fi
+      fi
