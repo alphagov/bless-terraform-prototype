@@ -1,2 +1,25 @@
-* Infrastructure for Bless
-Terraform and Puppet code to bootstrap a bastion (sometimes called a jump box) and application server configured to use [[https://github.com/Netflix/bless][Bless]] an SSH certificate authority.
+* Example infrastructure for BLESS
+  Terraform to bootstrap a bastion (sometimes called a jump box) and application server configured to use [[https://github.com/Netflix/bless][Bless]] an SSH certificate authority.
+
+  *This is extremely experimental* and was developed in order to see how BLESS could fit into some of our existing architecture.
+
+** BLESS
+   Configuration and deployment of the bless lambda function and Public Key Infrastructure should be managed separately.
+
+** Bastion
+   Basic setup here uses PAM to exec a script to request a certificate from BLESS upon successful login.
+
+** App-server
+   Setup to trust the Lambda Certificate Authority for SSH access. Sets up a `bless_user` to be the principal of the SSH certificates issued by bless.
+
+** Using this infrastructure
+   One way to keep the usability of =ssh user@app-server= with bless is by using a ProxyCommand in .ssh/config such as in this example:
+     #+BEGIN_EXAMPLE
+     Host bastion
+         Hostname <ip/hostname of bastion>
+
+     Host app-server
+         Hostname 10.0.1.5
+         ProxyCommand bash -c "scp bastion:id_rsa-cert.pub ~/.ssh/id_rsa-cert.pub && ssh bastion -W %h:%p"
+     #+END_EXAMPLE
+   This works by copying the SSH certificate off the bastion and proxying through an SSH connection to the bastion to reach the app-server.
